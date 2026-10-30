@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "jspdf": "^4.2.1"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "npx http-server -p 8080 -c-1",
+    "test": "node tests.js"
+  }
+}

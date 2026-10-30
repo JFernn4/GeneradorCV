@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CV YA! - Generador de Currículum</title>
+  
+  <!-- Política de seguridad: Sin peticiones de red externas, 100% local y privado -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' blob:;">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Contenedor Principal del Asistente (Una pregunta a la vez) -->
+  <div id="wizard-container" class="app-container">
+    <header class="app-header">
+      <div class="logo-badge" aria-label="Logo CV YA!">
+        <img src="assets/logo.png" alt="CV YA!" class="logo-img" onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex';">
+        <div id="logo-fallback" style="display: none; flex-direction: column; align-items: center; justify-content: center;">
+          <span class="logo-text-cv">CV</span>
+          <span class="logo-text-ya">YA!</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Banner accesible de advertencias o errores de validación -->
+    <div id="mensaje-error" class="banner-error" role="alert" hidden></div>
+
+    <!-- Contenedor dinámico donde se inyecta UNA SOLA pregunta a la vez -->
+    <main id="paso-contenido" class="paso-contenido" aria-live="polite">
+      <!-- Inyectado dinámicamente por app.js -->
+    </main>
+  </div>
+
+  <!-- Pantalla Final: Selección de Diseño, Vista Previa y Exportación a PDF -->
+  <div id="pantalla-final" class="pantalla-final-container" hidden>
+    <section class="final-panel-superior">
+      <div class="final-titulos">
+        <h2>¡Tu currículum está listo!</h2>
+        <p>Elige el diseño que más te guste y descárgalo en formato PDF (tamaño Carta).</p>
+      </div>
+
+      <!-- Selector de plantillas visuales -->
+      <div id="selector-plantillas" class="selector-plantillas-grid">
+        <!-- Inyectado por app.js -->
+      </div>
+
+      <!-- Barra de herramientas: Densidad y Acciones -->
+      <div class="final-toolbar-fila">
+        <div class="densidad-toggle-grupo">
+          <span class="densidad-label">Espaciado:</span>
+          <button type="button" id="btn-densidad-normal" class="btn-densidad activo">Normal</button>
+          <button type="button" id="btn-densidad-compacta" class="btn-densidad">Compacta (1 página)</button>
+        </div>
+
+        <div class="final-acciones-botones">
+          <button type="button" id="btn-descargar-pdf" class="btn-descarga-principal">
+            <span>Descargar CV en PDF</span>
+          </button>
+          <button type="button" id="btn-editar-respuestas" class="btn-editar-datos">
+            Editar datos
+          </button>
+          <button type="button" id="btn-borrar-todo" class="btn-peligro-borrar">
+            Borrar todo
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vista previa en tiempo real -->
+    <section class="contenedor-hoja-wrap" aria-label="Vista previa del currículum">
+      <div id="contenedor-cv-preview">
+        <!-- Inyectado por render.js -->
+      </div>
+    </section>
+  </div>
+
+  <!-- Librería PDF local sin dependencias externas -->
+  <script src="lib/jspdf.umd.min.js"></script>
+  <!-- Lógica modular desacoplada mediante ES Modules -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+

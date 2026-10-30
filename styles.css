@@ -1,0 +1,988 @@
+/**
+ * styles.css
+ * Estilos para el Generador de CV.
+ * 1. Asistente paso a paso (Mobile-first, diseño limpio centrado con fondo azul degradado).
+ * 2. Vista previa en tiempo real de las 3 plantillas de CV en hoja tamaño Carta.
+ */
+
+:root {
+  --bg-gradient: radial-gradient(circle at 50% 30%, #1a3c68 0%, #0d1e33 75%, #08111c 100%);
+  --color-texto: #ffffff;
+  --color-subtexto: #c2d4ea;
+  --color-input-bg: #ffffff;
+  --color-input-texto: #1e293b;
+  --color-primario: #2f7c99;
+  --color-primario-hover: #2f7c99;
+  --color-acento-pill: #94a3b8;
+  --color-card-bg: rgba(255, 255, 255, 0.06);
+  --color-card-border: rgba(255, 255, 255, 0.15);
+  --color-seleccionado: #2f7c99;
+  --color-error-bg: #ef4444;
+  --fuente-principal: "Century Gothic", CenturyGothic, sans-serif;
+} 
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--fuente-principal);
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  color: var(--color-texto);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================================
+   CONTENEDOR DEL WIZARD (Paso a paso)
+   ============================================================================ */
+.app-container {
+  width: 100%;
+  max-width: 600px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Encabezado con Logo */
+.app-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.logo-badge {
+  width: 108px;
+  height: 108px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  border-radius: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.logo-img {
+  width: 86px;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Mensajes de error */
+.banner-error {
+  width: 100%;
+  background: var(--color-error-bg);
+  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Caja de pregunta */
+.pregunta-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pregunta-subtitulo {
+  font-size: 16px;
+  color: var(--color-subtexto);
+  margin-bottom: 8px;
+  font-weight: 400;
+}
+
+.pregunta-titulo {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.pregunta-nota {
+  font-size: 14px;
+  color: #93c5fd;
+  margin-bottom: 20px;
+}
+
+/* Fila input con botón tipo pill (como en la referencia) */
+.input-accion-fila {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.input-pill {
+  flex: 1;
+  background: var(--color-input-bg);
+  color: var(--color-input-texto);
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  padding: 14px 22px;
+  font-size: 17px;
+  font-family: inherit;
+  outline: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-pill:focus {
+  border-color: var(--color-primario);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.35);
+}
+
+.select-pill {
+  width: 100%;
+  background: var(--color-input-bg);
+  color: var(--color-input-texto);
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  padding: 13px 20px;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 16px;
+}
+
+.btn-pill-accion {
+  background: #cbd5e1;
+  color: #0f172a;
+  border: none;
+  border-radius: 9999px;
+  padding: 14px 26px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-pill-accion:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.btn-pill-accion:active {
+  transform: translateY(1px);
+}
+
+.btn-pill-grande {
+  width: 100%;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 16px 24px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 18px;
+  margin-bottom: 10px;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-pill-grande:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.btn-opcion-neutro {
+  background: transparent;
+  color: #cbd5e1;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+  padding: 12px 20px;
+  font-size: 15px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.2s, color 0.2s;
+  width: 100%;
+}
+
+.btn-opcion-neutro:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Opciones táctiles en cuadrícula (móvil y celular) */
+.grid-opciones-tactiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.btn-chip-tactil {
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 14px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 74px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-chip-tactil:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-chip-tactil.seleccionado {
+  background: rgba(37, 99, 235, 0.4);
+  border-color: #60a5fa;
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.4);
+  font-weight: 700;
+}
+
+/* Columna de opciones destacadas */
+.opciones-destacadas-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.btn-opcion-destacada {
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  color: #ffffff;
+  text-align: left;
+  transition: all 0.2s;
+  min-height: 64px;
+}
+
+.btn-opcion-destacada:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-opcion-destacada.seleccionado {
+  background: rgba(37, 99, 235, 0.35);
+  border-color: #60a5fa;
+}
+
+.btn-opcion-icono {
+  font-size: 28px;
+}
+
+.btn-opcion-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.btn-opcion-textos strong {
+  font-size: 17px;
+  color: #ffffff;
+}
+
+.btn-opcion-textos span {
+  font-size: 13px;
+  color: var(--color-subtexto);
+}
+
+.btn-destacado-neutro {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Chips de sugerencias horizontales */
+.chips-sugerencias-fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.chip-sugerencia {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
+  border-radius: 9999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chip-sugerencia:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.chip-sugerencia.seleccionado {
+  background: #2563eb;
+  border-color: #60a5fa;
+}
+
+/* Bloques de formularios de experiencia y adicionales */
+.form-experiencia-box {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  padding: 18px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.label-campo {
+  font-size: 14px;
+  font-weight: 600;
+  color: #93c5fd;
+  margin-top: 6px;
+}
+
+.experiencias-agregadas-resumen {
+  width: 100%;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.item-exp-resumen {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+}
+
+.btn-borrar-item {
+  background: transparent;
+  color: #f87171;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+.campo-otro-container {
+  width: 100%;
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+
+.pregunta-inmediata-box {
+  width: 100%;
+  margin-top: 14px;
+  text-align: left;
+}
+
+.pregunta-inmediata-box h3 {
+  font-size: 15px;
+  color: #93c5fd;
+  margin-bottom: 8px;
+}
+
+/* Barra de navegación de retorno */
+.barra-navegacion-paso {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-nav-atras {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 14px;
+  transition: color 0.2s;
+}
+
+.btn-nav-atras:hover {
+  color: #ffffff;
+}
+
+/* ============================================================================
+   PANTALLA FINAL: PANEL DE CONTROL Y VISTA PREVIA
+   ============================================================================ */
+.pantalla-final-container {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.final-panel-superior {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.final-titulos {
+  text-align: center;
+}
+
+.final-titulos h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.final-titulos p {
+  font-size: 14px;
+  color: var(--color-subtexto);
+}
+
+/* Selector de plantillas */
+.selector-plantillas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.card-plantilla-selector {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card-plantilla-selector:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.card-plantilla-selector.seleccionado {
+  background: rgba(37, 99, 235, 0.35);
+  border-color: #60a5fa;
+  box-shadow: 0 0 14px rgba(96, 165, 250, 0.4);
+}
+
+.plantilla-icono {
+  font-size: 24px;
+}
+
+.plantilla-nombre {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.plantilla-desc {
+  font-size: 12px;
+  color: var(--color-subtexto);
+  line-height: 1.3;
+}
+
+/* Controles de densidad y acciones */
+.final-toolbar-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.densidad-toggle-grupo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.densidad-label {
+  font-size: 13px;
+  color: var(--color-subtexto);
+  margin-right: 4px;
+}
+
+.btn-densidad {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f1f5f9;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-densidad.activo {
+  background: #2563eb;
+  border-color: #60a5fa;
+  font-weight: 700;
+}
+
+.final-acciones-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-descarga-principal {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-descarga-principal:hover {
+  background: #2f7c99;
+  transform: translateY(-1px);
+}
+
+.btn-editar-datos {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 9999px;
+  padding: 10px 18px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-editar-datos:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.btn-peligro-borrar {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 9999px;
+  padding: 10px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-peligro-borrar:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* ============================================================================
+   HOJA DE VISTA PREVIA (Proporción exacta tamaño Carta 8.5 x 11 in)
+   ============================================================================ */
+.contenedor-hoja-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding-bottom: 40px;
+  overflow-x: auto;
+}
+
+.cv-hoja {
+  width: 100%;
+  max-width: 800px;
+  min-height: 1050px;
+  background: #ffffff;
+  color: #1f2937;
+  border-radius: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  padding: 38px 44px;
+  box-sizing: border-box;
+  font-family: var(--fuente-principal);
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- ESTILOS COMUNES DE SECCIONES --- */
+.cv-seccion {
+  margin-bottom: 16px;
+}
+
+.cv-seccion-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #1e293b;
+  margin-bottom: 6px;
+  border-bottom: 1.5px solid #cbd5e1;
+  padding-bottom: 2px;
+}
+
+.cv-seccion-texto {
+  font-size: 13.5px;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.cv-entrada-item {
+  margin-bottom: 10px;
+}
+
+.cv-entrada-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cv-entrada-subtitulo {
+  font-size: 12.5px;
+  font-style: italic;
+  color: #64748b;
+  margin-bottom: 3px;
+}
+
+.cv-viñetas,
+.cv-lista-simple {
+  list-style-type: square;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.cv-viñetas li,
+.cv-lista-simple li {
+  margin-bottom: 2px;
+}
+
+/* --- 1. PLANTILLA CLÁSICA (Isabela Fernández) --- */
+.cv-plantilla-clasico .cv-header-clasico {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 10px;
+}
+
+.cv-plantilla-clasico .cv-nombre {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.cv-plantilla-clasico .cv-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12.5px;
+  color: #475569;
+  gap: 2px;
+}
+
+.cv-plantilla-clasico .cv-divisor {
+  border: none;
+  border-top: 2px solid #0f172a;
+  margin-bottom: 18px;
+}
+
+/* --- 2. PLANTILLA CON BARRA LATERAL (Ricardo Salinas) --- */
+.cv-plantilla-lateral {
+  padding: 0;
+  overflow: hidden;
+}
+
+.cv-plantilla-lateral .cv-layout-lateral {
+  display: flex;
+  min-height: 1050px;
+  width: 100%;
+}
+
+.cv-plantilla-lateral .cv-sidebar {
+  width: 35%;
+  background: #edf4f8;
+  padding: 34px 24px;
+  border-right: 1px solid #d9e6ed;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cv-plantilla-lateral .cv-sidebar-titulo {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e3a5f;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  border-bottom: 1.5px solid #b6ccdb;
+  padding-bottom: 2px;
+}
+
+.cv-plantilla-lateral .cv-sidebar-texto {
+  font-size: 12.5px;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.cv-plantilla-lateral .cv-sidebar-contactos {
+  font-size: 12.5px;
+  color: #334155;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cv-plantilla-lateral .cv-sidebar-lista {
+  padding-left: 14px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.cv-plantilla-lateral .cv-main-col {
+  width: 65%;
+  padding: 34px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cv-plantilla-lateral .cv-nombre-grande {
+  font-size: 28px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #1e3a5f;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.cv-plantilla-lateral .cv-main-titulo {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e3a5f;
+  margin-bottom: 6px;
+  border-bottom: 1.5px solid #1e3a5f;
+  padding-bottom: 2px;
+}
+
+/* --- 3. PLANTILLA EJECUTIVA (Mariana Napolitani) --- */
+.cv-plantilla-ejecutivo {
+  padding: 0;
+}
+
+.cv-plantilla-ejecutivo .cv-banner-ejecutivo {
+  background: #0e2a47;
+  color: #ffffff;
+  padding: 24px 34px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cv-plantilla-ejecutivo .cv-banner-nombre {
+  font-size: 26px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cv-plantilla-ejecutivo .cv-banner-right {
+  font-size: 12.5px;
+  color: #cbd5e1;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cv-plantilla-ejecutivo .cv-cuerpo-ejecutivo {
+  padding: 24px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cv-plantilla-ejecutivo .cv-ejecutivo-fila {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.cv-plantilla-ejecutivo .cv-ejecutivo-col-titulo {
+  width: 25%;
+  flex-shrink: 0;
+}
+
+.cv-plantilla-ejecutivo .cv-ejecutivo-titulo {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0e2a47;
+  letter-spacing: 0.5px;
+}
+
+.cv-plantilla-ejecutivo .cv-ejecutivo-separador-v {
+  width: 1.5px;
+  background: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.cv-plantilla-ejecutivo .cv-ejecutivo-col-contenido {
+  flex: 1;
+}
+
+.cv-plantilla-ejecutivo .cv-ejecutivo-texto {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.45;
+}
+
+/* Modificador de densidad compacta */
+.cv-densidad-compacta {
+  padding: 24px 32px;
+  font-size: 12px;
+}
+
+.cv-densidad-compacta .cv-seccion {
+  margin-bottom: 10px;
+}
+
+.cv-densidad-compacta .cv-entrada-item {
+  margin-bottom: 6px;
+}
+
+/* ============================================================================
+   RESPONSIVIDAD MÓVIL
+   ============================================================================ */
+@media (max-width: 640px) {
+  body {
+    padding: 16px 10px;
+  }
+
+  .pregunta-titulo {
+    font-size: 22px;
+  }
+
+  .input-accion-fila {
+    flex-direction: column;
+  }
+
+  .btn-pill-accion {
+    width: 100%;
+  }
+
+  .cv-hoja {
+    padding: 18px 14px;
+    font-size: 12px;
+  }
+
+  .cv-plantilla-clasico .cv-header-clasico {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .cv-plantilla-clasico .cv-header-right {
+    align-items: flex-start;
+  }
+
+  .cv-plantilla-lateral .cv-layout-lateral {
+    flex-direction: column;
+  }
+
+  .cv-plantilla-lateral .cv-sidebar,
+  .cv-plantilla-lateral .cv-main-col {
+    width: 100%;
+    padding: 20px 16px;
+  }
+
+  .cv-plantilla-ejecutivo .cv-banner-ejecutivo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .cv-plantilla-ejecutivo .cv-banner-right {
+    text-align: left;
+  }
+
+  .cv-plantilla-ejecutivo .cv-ejecutivo-fila {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .cv-plantilla-ejecutivo .cv-ejecutivo-col-titulo {
+    width: 100%;
+  }
+
+  .cv-plantilla-ejecutivo .cv-ejecutivo-separador-v {
+    display: none;
+  }
+}
+
