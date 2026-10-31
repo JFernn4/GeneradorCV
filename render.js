@@ -60,6 +60,17 @@ export function renderizarCV(cvEstructura, contenedor, opciones = {}) {
 function renderizarPlantillaClasico(cv, hoja) {
   // Encabezado
   const header = crearElemento("header", "cv-header-clasico");
+
+  if (cv.encabezado.foto) {
+    const fotoBox = crearElemento("div", "cv-header-foto-box");
+    const img = document.createElement("img");
+    img.src = cv.encabezado.foto;
+    img.alt = "Fotografía";
+    img.className = "cv-foto-redonda";
+    fotoBox.appendChild(img);
+    header.appendChild(fotoBox);
+  }
+
   const headerLeft = crearElemento("div", "cv-header-left");
   const nombreEl = crearElemento("h1", "cv-nombre", cv.encabezado.nombre || "Currículum Vitae");
   headerLeft.appendChild(nombreEl);
@@ -131,6 +142,16 @@ function renderizarPlantillaLateral(cv, hoja) {
 
   // Barra lateral (izquierda)
   const sidebar = crearElemento("aside", "cv-sidebar");
+
+  if (cv.encabezado.foto) {
+    const fotoBox = crearElemento("div", "cv-sidebar-foto-box");
+    const img = document.createElement("img");
+    img.src = cv.encabezado.foto;
+    img.alt = "Fotografía";
+    img.className = "cv-sidebar-foto-img";
+    fotoBox.appendChild(img);
+    sidebar.appendChild(fotoBox);
+  }
 
   // Contacto en barra lateral
   const secContacto = crearElemento("div", "cv-sidebar-bloque");
@@ -213,7 +234,20 @@ function renderizarPlantillaEjecutivo(cv, hoja) {
   // Franja superior azul
   const banner = crearElemento("header", "cv-banner-ejecutivo");
   const bannerLeft = crearElemento("div", "cv-banner-left");
-  bannerLeft.appendChild(crearElemento("h1", "cv-banner-nombre", cv.encabezado.nombre || "Currículum"));
+
+  if (cv.encabezado.foto) {
+    const fotoBox = crearElemento("div", "cv-banner-foto-box");
+    const img = document.createElement("img");
+    img.src = cv.encabezado.foto;
+    img.alt = "Fotografía";
+    img.className = "cv-banner-foto-img";
+    fotoBox.appendChild(img);
+    bannerLeft.appendChild(fotoBox);
+  }
+
+  const bannerTextos = crearElemento("div", "cv-banner-textos");
+  bannerTextos.appendChild(crearElemento("h1", "cv-banner-nombre", cv.encabezado.nombre || "Currículum"));
+  bannerLeft.appendChild(bannerTextos);
   banner.appendChild(bannerLeft);
 
   const bannerRight = crearElemento("div", "cv-banner-right");

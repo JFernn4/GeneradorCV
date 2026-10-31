@@ -6,7 +6,7 @@
  */
 
 import { CATALOGO_AREAS, DURACIONES, ESTUDIOS_LABELS, NIVELES_IDIOMA, VEHICULO_LABELS } from "./catalogo.js";
-import { validarEstado, limpiarTexto, normalizarNombre, normalizarTelefono } from "./validacion.js";
+import { validarEstado, limpiarTexto, normalizarNombre, normalizarTelefono, validarArchivoFoto } from "./validacion.js";
 import { buildCV } from "./cv-builder.js";
 import { renderizarCV, crearElemento } from "./render.js";
 import { descargarPDF, liberarRecursosPDF } from "./pdf.js";
@@ -19,6 +19,7 @@ let estado = {
     correo: null,
     zona: ""
   },
+  foto: null, // string dataURL (JPEG sin EXIF de máx 400px) o null
   areas: [],
   areaOtraTexto: null,
   sinExperiencia: false,
@@ -42,6 +43,7 @@ let configPresentacion = {
 
 // Control de navegación paso a paso
 let pasoActual = 0;
+let modoNuevaExperiencia = false;
 
 // Lista ordenada de los pasos del asistente
 const PASOS = [
@@ -49,6 +51,7 @@ const PASOS = [
   "telefono",
   "zona",
   "correo",
+  "foto",
   "areas",
   "experiencia_filtro",
   "experiencia_detalle",
@@ -67,6 +70,18 @@ let contVistaPrevia = null;
 let contFinal = null;
 let contWizard = null;
 let bannerError = null;
+
+// Control de flujo de cámara en vivo
+let camaraStreamActivo = null;
+
+function detenerCamaraActiva() {
+  if (camaraStreamActivo) {
+    try {
+      camaraStreamActivo.getTracks().forEach((track) => track.stop());
+    } catch (_) {}
+    camaraStreamActivo = null;
+  }
+}
 
 /**
  * Inicialización al cargar la página
@@ -116,6 +131,10 @@ export function irAPaso(indice) {
   if (pasoActual < 0) pasoActual = 0;
   if (pasoActual >= PASOS.length) pasoActual = PASOS.length - 1;
 
+  if (PASOS[pasoActual] === "experiencia_detalle" && estado.experiencias.length === 0) {
+    modoNuevaExperiencia = true;
+  }
+
   renderizarPasoActual();
 }
 
@@ -135,6 +154,7 @@ export function pasoSiguiente() {
  * Renderiza exclusivamente la pregunta del paso actual
  */
 function renderizarPasoActual() {
+  detenerCamaraActiva();
   const clavePaso = PASOS[pasoActual];
 
   if (clavePaso === "final") {
@@ -163,6 +183,9 @@ function renderizarPasoActual() {
       break;
     case "correo":
       renderPasoCorreo();
+      break;
+    case "foto":
+      renderPasoFoto();
       break;
     case "areas":
       renderPasoAreas();
@@ -382,7 +405,324 @@ function renderPasoCorreo() {
 }
 
 /**
- * Paso 5: Áreas de trabajo buscadas
+ * Paso 5: Fotografía opcional
+ */
+function renderPasoFoto() {
+  detenerCamaraActiva();
+
+  const wrapper = crearElemento("div", "pregunta-box");
+  wrapper.appendChild(crearElemento("p", "pregunta-subtitulo", "Fotografía (Opcional)"));
+  wrapper.appendChild(crearElemento("h2", "pregunta-titulo", "¿Deseas agregar una foto a tu currículum?"));
+
+  // Texto obligatorio de privacidad
+  const avisoPrivacidad = crearElemento("div", "aviso-privacidad-foto");
+  avisoPrivacidad.appendChild(crearElemento("p", "", "La foto es opcional. No se guarda ni se envía: se queda en su celular."));
+  wrapper.appendChild(avisoPrivacidad);
+
+  // Contenedor principal de fotografía
+  const cajaFoto = crearElemento("div", "caja-foto-container");
+
+  // Input oculto para archivo desde galería o explorador
+  const inputFile = document.createElement("input");
+  inputFile.type = "file";
+  inputFile.accept = "image/jpeg,image/png,image/webp";
+  inputFile.style.display = "none";
+
+  // Input oculto para fallback en móvil con capture
+  const inputCamara = document.createElement("input");
+  inputCamara.type = "file";
+  inputCamara.accept = "image/*";
+  inputCamara.capture = "user";
+  inputCamara.style.display = "none";
+
+  cajaFoto.appendChild(inputFile);
+  cajaFoto.appendChild(inputCamara);
+
+  // Canvas de 300 x 400 px (proporción 3:4, máx 400 px de lado largo)
+  const canvas = document.createElement("canvas");
+  canvas.width = 300;
+  canvas.height = 400;
+  canvas.className = "canvas-foto-preview";
+
+  let zoomActual = 1.0;
+  let panY = 0;
+  let imgEnMemoria = null;
+
+  const redibujarCanvas = () => {
+    if (!imgEnMemoria) return;
+    const ctx = canvas.getContext("2d");
+    const cw = canvas.width;
+    const ch = canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, cw, ch);
+
+    const imgRatio = imgEnMemoria.width / imgEnMemoria.height;
+    const canvasRatio = cw / ch;
+
+    let baseW, baseH;
+    if (imgRatio > canvasRatio) {
+      baseH = ch;
+      baseW = ch * imgRatio;
+    } else {
+      baseW = cw;
+      baseH = cw / imgRatio;
+    }
+
+    const w = baseW * zoomActual;
+    const h = baseH * zoomActual;
+    const x = (cw - w) / 2;
+    const y = ((ch - h) / 2) + panY;
+
+    ctx.drawImage(imgEnMemoria, x, y, w, h);
+
+    // Exportar como JPEG a calidad ~0.8 (elimina metadatos EXIF / ubicación GPS y reduce peso)
+    estado.foto = canvas.toDataURL("image/jpeg", 0.8);
+  };
+
+  const procesarArchivo = (file) => {
+    limpiarError();
+    const resVal = validarArchivoFoto(file);
+    if (!resVal.valido) {
+      mostrarError(resVal.error);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        imgEnMemoria = img;
+        zoomActual = 1.0;
+        panY = 0;
+        redibujarCanvas();
+        renderizarPasoActual();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  inputFile.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      procesarArchivo(e.target.files[0]);
+    }
+  });
+
+  inputCamara.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      procesarArchivo(e.target.files[0]);
+    }
+  });
+
+  const iniciarCamara = async () => {
+    limpiarError();
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false
+        });
+        camaraStreamActivo = stream;
+        mostrarVisorCamara(stream);
+      } catch (err) {
+        console.warn("No se pudo abrir la cámara directamente:", err);
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          mostrarError("Permiso de cámara no concedido. Puedes seleccionar una foto de tu galería.");
+        }
+        inputCamara.click();
+      }
+    } else {
+      inputCamara.click();
+    }
+  };
+
+  const mostrarVisorCamara = (stream) => {
+    while (cajaFoto.firstChild) {
+      cajaFoto.removeChild(cajaFoto.firstChild);
+    }
+    cajaFoto.appendChild(inputFile);
+    cajaFoto.appendChild(inputCamara);
+
+    const visorBox = crearElemento("div", "camara-viewfinder-box");
+    visorBox.appendChild(crearElemento("p", "pregunta-nota", "Apunta la cámara a tu rostro y presiona 'Capturar foto'"));
+
+    const video = document.createElement("video");
+    video.autoplay = true;
+    video.playsInline = true;
+    video.muted = true;
+    video.className = "camara-video-preview";
+    video.srcObject = stream;
+    visorBox.appendChild(video);
+
+    const controlesCam = crearElemento("div", "camara-controles-fila");
+
+    const btnCapturar = crearElemento("button", "btn-pill-grande", "Capturar foto");
+    btnCapturar.type = "button";
+    btnCapturar.addEventListener("click", () => {
+      const vW = video.videoWidth || 640;
+      const vH = video.videoHeight || 480;
+      const targetRatio = 300 / 400; // 0.75
+      const vRatio = vW / vH;
+
+      let sW, sH, sX, sY;
+      if (vRatio > targetRatio) {
+        sH = vH;
+        sW = vH * targetRatio;
+        sX = (vW - sW) / 2;
+        sY = 0;
+      } else {
+        sW = vW;
+        sH = vW / targetRatio;
+        sX = 0;
+        sY = (vH - sH) / 2;
+      }
+
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, sX, sY, sW, sH, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+
+      estado.foto = canvas.toDataURL("image/jpeg", 0.8);
+      detenerCamaraActiva();
+      renderizarPasoActual();
+    });
+
+    const btnCancelarCam = crearElemento("button", "btn-opcion-neutro", "Cancelar cámara");
+    btnCancelarCam.type = "button";
+    btnCancelarCam.addEventListener("click", () => {
+      detenerCamaraActiva();
+      renderizarPasoActual();
+    });
+
+    controlesCam.appendChild(btnCapturar);
+    controlesCam.appendChild(btnCancelarCam);
+    visorBox.appendChild(controlesCam);
+    cajaFoto.appendChild(visorBox);
+  };
+
+  if (estado.foto) {
+    const imgPrevia = new Image();
+    imgPrevia.onload = () => {
+      imgEnMemoria = imgPrevia;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imgPrevia, 0, 0, canvas.width, canvas.height);
+    };
+    imgPrevia.src = estado.foto;
+
+    cajaFoto.appendChild(canvas);
+
+    // Controles de ajuste de encuadre (Zoom y Posición Vertical)
+    const controlesBox = crearElemento("div", "foto-controles-box");
+    controlesBox.appendChild(crearElemento("label", "label-campo", "Ajustar tamaño (Zoom):"));
+
+    const sliderZoom = document.createElement("input");
+    sliderZoom.type = "range";
+    sliderZoom.min = "1.0";
+    sliderZoom.max = "2.5";
+    sliderZoom.step = "0.05";
+    sliderZoom.value = "1.0";
+    sliderZoom.className = "slider-foto";
+
+    sliderZoom.addEventListener("input", (e) => {
+      zoomActual = parseFloat(e.target.value);
+      redibujarCanvas();
+    });
+    controlesBox.appendChild(sliderZoom);
+
+    controlesBox.appendChild(crearElemento("label", "label-campo", "Centrar encuadre (Arriba / Abajo):"));
+    const sliderY = document.createElement("input");
+    sliderY.type = "range";
+    sliderY.min = "-120";
+    sliderY.max = "120";
+    sliderY.step = "2";
+    sliderY.value = "0";
+    sliderY.className = "slider-foto";
+
+    sliderY.addEventListener("input", (e) => {
+      panY = parseInt(e.target.value, 10);
+      redibujarCanvas();
+    });
+    controlesBox.appendChild(sliderY);
+
+    const filaBtnsFoto = crearElemento("div", "fila-acciones-foto");
+    const btnCambiar = crearElemento("button", "btn-opcion-neutro", "Cambiar foto");
+    btnCambiar.type = "button";
+    btnCambiar.addEventListener("click", () => {
+      estado.foto = null;
+      imgEnMemoria = null;
+      inputFile.value = "";
+      inputCamara.value = "";
+      renderizarPasoActual();
+    });
+
+    const btnQuitar = crearElemento("button", "btn-eliminar-tarjeta", "Quitar foto");
+    btnQuitar.type = "button";
+    btnQuitar.addEventListener("click", () => {
+      estado.foto = null;
+      imgEnMemoria = null;
+      inputFile.value = "";
+      inputCamara.value = "";
+      renderizarPasoActual();
+    });
+
+    filaBtnsFoto.appendChild(btnCambiar);
+    filaBtnsFoto.appendChild(btnQuitar);
+    controlesBox.appendChild(filaBtnsFoto);
+    cajaFoto.appendChild(controlesBox);
+
+    wrapper.appendChild(cajaFoto);
+
+    // Botón continuar con la foto
+    const btnContinuar = crearElemento("button", "btn-pill-grande", "Continuar con esta foto");
+    btnContinuar.type = "button";
+    btnContinuar.addEventListener("click", () => pasoSiguiente());
+    wrapper.appendChild(btnContinuar);
+  } else {
+    // Si aún no ha subido foto
+    const colOpciones = crearElemento("div", "opciones-destacadas-col");
+
+    const btnGaleria = crearElemento("button", "btn-opcion-destacada");
+    btnGaleria.type = "button";
+    const txtGal = crearElemento("div", "btn-opcion-textos");
+    txtGal.appendChild(crearElemento("strong", "", "Elegir foto de la galería"));
+    txtGal.appendChild(crearElemento("span", "", "Formatos JPG, PNG o WebP"));
+    btnGaleria.appendChild(txtGal);
+    btnGaleria.addEventListener("click", () => inputFile.click());
+
+    const btnTomar = crearElemento("button", "btn-opcion-destacada");
+    btnTomar.type = "button";
+    const txtTomar = crearElemento("div", "btn-opcion-textos");
+    txtTomar.appendChild(crearElemento("strong", "", "Tomar foto con la cámara"));
+    txtTomar.appendChild(crearElemento("span", "", "Usa la cámara del dispositivo"));
+    btnTomar.appendChild(txtTomar);
+    btnTomar.addEventListener("click", iniciarCamara);
+
+    colOpciones.appendChild(btnGaleria);
+    colOpciones.appendChild(btnTomar);
+    cajaFoto.appendChild(colOpciones);
+    wrapper.appendChild(cajaFoto);
+
+    // Botón omitir
+    const btnOmitir = crearElemento("button", "btn-pill-grande", "Continuar sin foto / Omitir");
+    btnOmitir.type = "button";
+    btnOmitir.addEventListener("click", () => {
+      estado.foto = null;
+      pasoSiguiente();
+    });
+    wrapper.appendChild(btnOmitir);
+  }
+
+  wrapper.appendChild(crearBarraNavegacion({ showAtras: true }));
+  contPaso.appendChild(wrapper);
+}
+
+/**
+ * Paso 6: Áreas de trabajo buscadas
  */
 function renderPasoAreas() {
   const wrapper = crearElemento("div", "pregunta-box");
@@ -512,44 +852,92 @@ function renderPasoExperienciaFiltro() {
 
 /**
  * Paso 7: Detalle de experiencia (hasta 3)
+ * Muestra el formulario para ingresar un trabajo o el resumen claro de los ya agregados
  */
 function renderPasoExperienciaDetalle() {
   const wrapper = crearElemento("div", "pregunta-box");
-  const numExp = estado.experiencias.length + 1;
 
-  wrapper.appendChild(crearElemento("p", "pregunta-subtitulo", `Experiencia laboral (${estado.experiencias.length}/3 agregadas)`));
-  wrapper.appendChild(crearElemento("h2", "pregunta-titulo", `Trabajo o experiencia #${numExp}`));
-
-  // Si ya tiene experiencias cargadas, mostrarlas resumidas
-  if (estado.experiencias.length > 0) {
-    const listadoExps = crearElemento("div", "experiencias-agregadas-resumen");
-    listadoExps.appendChild(crearElemento("strong", "", "Experiencias ya registradas:"));
-    estado.experiencias.forEach((exp, idx) => {
-      const item = crearElemento("div", "item-exp-resumen");
-      item.appendChild(crearElemento("span", "", `${idx + 1}. ${exp.puesto} (${exp.lugar || "Sin lugar"})`));
-      const btnBorrar = crearElemento("button", "btn-borrar-item", "Quitar");
-      btnBorrar.addEventListener("click", () => {
-        estado.experiencias.splice(idx, 1);
-        renderPasoExperienciaDetalle();
-      });
-      item.appendChild(btnBorrar);
-      listadoExps.appendChild(item);
-    });
-    wrapper.appendChild(listadoExps);
-
-    // Si ya completó 3 o desea avanzar
-    const btnAvanzar = crearElemento("button", "btn-opcion-neutro", "Continuar con estas experiencias");
-    btnAvanzar.addEventListener("click", () => pasoSiguiente());
-    wrapper.appendChild(btnAvanzar);
-
-    if (estado.experiencias.length >= 3) {
-      wrapper.appendChild(crearBarraNavegacion({ showAtras: true }));
-      contPaso.appendChild(wrapper);
-      return;
-    }
+  // Si ya tiene experiencias y no está activamente agregando una nueva, mostrar el Resumen
+  if (estado.experiencias.length > 0 && !modoNuevaExperiencia) {
+    renderResumenExperiencias(wrapper);
+    return;
   }
 
-  // Formulario para nueva experiencia
+  // De lo contrario, mostrar el formulario para ingresar un trabajo
+  renderFormularioExperiencia(wrapper);
+}
+
+/**
+ * Vista de resumen de trabajos guardados con confirmación y opciones claras
+ */
+function renderResumenExperiencias(wrapper) {
+  wrapper.appendChild(crearElemento("p", "pregunta-subtitulo", `Experiencias registradas (${estado.experiencias.length}/3)`));
+  wrapper.appendChild(crearElemento("h2", "pregunta-titulo", "Tus trabajos agregados"));
+  wrapper.appendChild(crearElemento("p", "pregunta-nota", "Revisa tus experiencias o agrega otra antes de continuar:"));
+
+  const listado = crearElemento("div", "lista-tarjetas-exp");
+  estado.experiencias.forEach((exp, idx) => {
+    const card = crearElemento("div", "tarjeta-exp-guardada");
+    const info = crearElemento("div", "tarjeta-exp-info");
+    info.appendChild(crearElemento("strong", "tarjeta-exp-titulo", exp.puesto));
+
+    const duracionLegible = DURACIONES[exp.duracion] || "Menos de 6 meses";
+    const sub = exp.lugar ? `${exp.lugar} · ${duracionLegible}` : duracionLegible;
+    info.appendChild(crearElemento("span", "tarjeta-exp-subtitulo", sub));
+
+    if (exp.tareas && exp.tareas.length > 0) {
+      const textoTareas = exp.tareas.slice(0, 3).join(", ") + (exp.tareas.length > 3 ? "..." : "");
+      info.appendChild(crearElemento("span", "tarjeta-exp-tareas", `Tareas: ${textoTareas}`));
+    }
+    card.appendChild(info);
+
+    const btnQuitar = crearElemento("button", "btn-eliminar-tarjeta", "Quitar");
+    btnQuitar.type = "button";
+    btnQuitar.addEventListener("click", () => {
+      estado.experiencias.splice(idx, 1);
+      if (estado.experiencias.length === 0) {
+        modoNuevaExperiencia = true;
+      }
+      renderizarPasoActual();
+    });
+    card.appendChild(btnQuitar);
+
+    listado.appendChild(card);
+  });
+  wrapper.appendChild(listado);
+
+  // Botón principal destacado: Continuar al siguiente paso
+  const btnContinuar = crearElemento("button", "btn-pill-grande", "Continuar al siguiente paso");
+  btnContinuar.type = "button";
+  btnContinuar.addEventListener("click", () => {
+    pasoSiguiente();
+  });
+  wrapper.appendChild(btnContinuar);
+
+  // Botón secundario para agregar otro trabajo (si hay menos de 3)
+  if (estado.experiencias.length < 3) {
+    const btnAgregarOtra = crearElemento("button", "btn-opcion-neutro", `+ Agregar otro trabajo (${estado.experiencias.length}/3)`);
+    btnAgregarOtra.type = "button";
+    btnAgregarOtra.addEventListener("click", () => {
+      modoNuevaExperiencia = true;
+      renderizarPasoActual();
+    });
+    wrapper.appendChild(btnAgregarOtra);
+  }
+
+  wrapper.appendChild(crearBarraNavegacion({ showAtras: true }));
+  contPaso.appendChild(wrapper);
+}
+
+/**
+ * Formulario limpio para registrar un nuevo trabajo
+ */
+function renderFormularioExperiencia(wrapper) {
+  const numExp = estado.experiencias.length + 1;
+  wrapper.appendChild(crearElemento("p", "pregunta-subtitulo", `Experiencia laboral (#${numExp} de 3)`));
+  wrapper.appendChild(crearElemento("h2", "pregunta-titulo", numExp === 1 ? "¿En qué has trabajado recientemente?" : `Trabajo o experiencia #${numExp}`));
+  wrapper.appendChild(crearElemento("p", "pregunta-nota", "Completa los datos de este puesto de trabajo"));
+
   const formExp = crearElemento("div", "form-experiencia-box");
 
   // 1. Puesto: sugerencias según áreas elegidas + texto libre
@@ -571,6 +959,8 @@ function renderPasoExperienciaDetalle() {
     btnP.type = "button";
     btnP.addEventListener("click", () => {
       inputPuesto.value = p;
+      chipsPuestos.querySelectorAll(".chip-sugerencia").forEach(c => c.classList.remove("seleccionado"));
+      btnP.classList.add("seleccionado");
     });
     chipsPuestos.appendChild(btnP);
   }
@@ -585,9 +975,20 @@ function renderPasoExperienciaDetalle() {
   inputLugar.maxLength = 80;
 
   const btnIndep = crearElemento("button", "chip-sugerencia", "Trabajo independiente");
-  btnIndep.addEventListener("click", () => { inputLugar.value = "Trabajo independiente"; });
+  btnIndep.type = "button";
+  btnIndep.addEventListener("click", () => {
+    inputLugar.value = "Trabajo independiente";
+    filaLugaresRapidos.querySelectorAll(".chip-sugerencia").forEach(c => c.classList.remove("seleccionado"));
+    btnIndep.classList.add("seleccionado");
+  });
+
   const btnFam = crearElemento("button", "chip-sugerencia", "Trabajo familiar");
-  btnFam.addEventListener("click", () => { inputLugar.value = "Trabajo familiar"; });
+  btnFam.type = "button";
+  btnFam.addEventListener("click", () => {
+    inputLugar.value = "Trabajo familiar";
+    filaLugaresRapidos.querySelectorAll(".chip-sugerencia").forEach(c => c.classList.remove("seleccionado"));
+    btnFam.classList.add("seleccionado");
+  });
 
   filaLugaresRapidos.appendChild(btnIndep);
   filaLugaresRapidos.appendChild(btnFam);
@@ -639,7 +1040,8 @@ function renderPasoExperienciaDetalle() {
   formExp.appendChild(inputOtraTarea);
 
   // Botón guardar experiencia
-  const btnGuardarExp = crearElemento("button", "btn-pill-grande", "Guardar esta experiencia");
+  const btnGuardarExp = crearElemento("button", "btn-pill-grande", "Guardar este trabajo");
+  btnGuardarExp.type = "button";
   btnGuardarExp.addEventListener("click", () => {
     const puesto = limpiarTexto(inputPuesto.value);
     if (!puesto) {
@@ -664,15 +1066,26 @@ function renderPasoExperienciaDetalle() {
     });
 
     limpiarError();
-    renderPasoExperienciaDetalle();
+    modoNuevaExperiencia = false;
+    renderizarPasoActual();
   });
 
   formExp.appendChild(btnGuardarExp);
   wrapper.appendChild(formExp);
 
-  // Botón para saltar o continuar si ya tiene al menos una
-  if (estado.experiencias.length === 0) {
-    const btnOmitir = crearElemento("button", "btn-opcion-neutro", "Prefiero no agregar experiencia formal");
+  // Si ya tiene alguna experiencia y estaba agregando otra, botón para volver a la lista
+  if (estado.experiencias.length > 0) {
+    const btnVolver = crearElemento("button", "btn-opcion-neutro", "Volver a la lista de experiencias");
+    btnVolver.type = "button";
+    btnVolver.addEventListener("click", () => {
+      modoNuevaExperiencia = false;
+      renderizarPasoActual();
+    });
+    wrapper.appendChild(btnVolver);
+  } else {
+    // Si no tiene ninguna, botón de omitir
+    const btnOmitir = crearElemento("button", "btn-opcion-neutro", "No tengo experiencia formal / Omitir");
+    btnOmitir.type = "button";
     btnOmitir.addEventListener("click", () => {
       estado.sinExperiencia = true;
       estado.experiencias = [];
@@ -736,7 +1149,7 @@ function renderPasoHabilidades() {
       habsSeleccionadas.add(val);
       inputOtra.value = "";
       estado.habilidades = Array.from(habsSeleccionadas);
-      renderPasoHabilidades();
+      renderizarPasoActual();
     }
   });
 
@@ -794,6 +1207,7 @@ function renderPasoVehiculo() {
 
 /**
  * Paso 10: Idiomas
+ * Diseño compacto y ordenado, sin saltos extraños de espaciado
  */
 function renderPasoIdiomas() {
   const wrapper = crearElemento("div", "pregunta-box");
@@ -801,69 +1215,85 @@ function renderPasoIdiomas() {
   wrapper.appendChild(crearElemento("h2", "pregunta-titulo", "¿Hablas algún idioma además de español?"));
   wrapper.appendChild(crearElemento("p", "pregunta-nota", "Español se asume nativo. Puedes agregar idiomas mayas, inglés u otros"));
 
-  // Resumen de idiomas ya agregados
+  // Si ya hay idiomas agregados, mostrarlos como chips limpios con botón de quitar
   if (estado.idiomas.length > 0) {
-    const listaI = crearElemento("div", "experiencias-agregadas-resumen");
+    const contChipsIdiomas = crearElemento("div", "chips-idiomas-agregados");
     estado.idiomas.forEach((i, idx) => {
-      const item = crearElemento("div", "item-exp-resumen");
-      item.appendChild(crearElemento("span", "", `${i.idioma} (${NIVELES_IDIOMA[i.nivel]})`));
-      const btnBorrar = crearElemento("button", "btn-borrar-item", "Quitar");
-      btnBorrar.addEventListener("click", () => {
+      const chip = crearElemento("div", "chip-idioma-item");
+      chip.appendChild(crearElemento("span", "", `${i.idioma} (${NIVELES_IDIOMA[i.nivel] || "Intermedio"})`));
+      
+      const btnQuitar = crearElemento("button", "btn-quitar-idioma-chip", "✕");
+      btnQuitar.type = "button";
+      btnQuitar.setAttribute("aria-label", `Quitar idioma ${i.idioma}`);
+      btnQuitar.addEventListener("click", () => {
         estado.idiomas.splice(idx, 1);
-        renderPasoIdiomas();
+        renderizarPasoActual();
       });
-      item.appendChild(btnBorrar);
-      listaI.appendChild(item);
+      chip.appendChild(btnQuitar);
+      contChipsIdiomas.appendChild(chip);
     });
-    wrapper.appendChild(listaI);
+    wrapper.appendChild(contChipsIdiomas);
   }
 
-  // Idiomas comunes en Guatemala
+  // Idiomas comunes en Guatemala (chips de sugerencias rápidas)
   const sugerencias = ["K'iche'", "Kaqchikel", "Q'eqchi'", "Mam", "Inglés"];
   const chipsI = crearElemento("div", "chips-sugerencias-fila");
-  const inputIdioma = crearElemento("input", "input-pill");
-  inputIdioma.placeholder = "Escribe o toca un idioma";
-  inputIdioma.maxLength = 40;
 
   for (const s of sugerencias) {
     const btnS = crearElemento("button", "chip-sugerencia", s);
     btnS.type = "button";
-    btnS.addEventListener("click", () => { inputIdioma.value = s; });
+    btnS.addEventListener("click", () => {
+      inputIdioma.value = s;
+      chipsI.querySelectorAll(".chip-sugerencia").forEach(c => c.classList.remove("seleccionado"));
+      btnS.classList.add("seleccionado");
+      inputIdioma.focus();
+    });
     chipsI.appendChild(btnS);
   }
   wrapper.appendChild(chipsI);
-  wrapper.appendChild(inputIdioma);
 
-  const filaNivel = crearElemento("div", "input-accion-fila");
-  const selectNivel = crearElemento("select", "select-pill");
+  // Formulario compacto y armonioso de agregar idioma
+  const cajaAgregar = crearElemento("div", "caja-agregar-idioma");
+
+  const inputIdioma = crearElemento("input", "input-pill");
+  inputIdioma.placeholder = "Escribe o toca un idioma";
+  inputIdioma.maxLength = 40;
+  cajaAgregar.appendChild(inputIdioma);
+
+  const filaControles = crearElemento("div", "fila-idioma-controles");
+
+  const selectNivel = crearElemento("select", "select-idioma-compacto");
   selectNivel.appendChild(new Option("Nivel Básico", "basico"));
   selectNivel.appendChild(new Option("Nivel Intermedio", "medio", true, true));
   selectNivel.appendChild(new Option("Nivel Avanzado", "alto"));
 
   const btnAgregar = crearElemento("button", "btn-pill-accion", "+ Agregar idioma");
+  btnAgregar.type = "button";
   btnAgregar.addEventListener("click", () => {
     const nom = limpiarTexto(inputIdioma.value);
     if (!nom) {
-      mostrarError("Escriba el nombre del idioma o toque 'Solo hablo español'");
+      mostrarError("Escribe o selecciona un idioma para agregarlo");
       return;
     }
     estado.idiomas.push({ idioma: nom, nivel: selectNivel.value });
-    inputIdioma.value = "";
     limpiarError();
-    renderPasoIdiomas();
+    renderizarPasoActual();
   });
 
-  filaNivel.appendChild(selectNivel);
-  filaNivel.appendChild(btnAgregar);
-  wrapper.appendChild(filaNivel);
+  filaControles.appendChild(selectNivel);
+  filaControles.appendChild(btnAgregar);
+  cajaAgregar.appendChild(filaControles);
+  wrapper.appendChild(cajaAgregar);
 
-  // Botón continuar / omitir
-  const btnContinuar = crearElemento("button", "btn-pill-grande", "Continuar");
-  btnContinuar.addEventListener("click", () => pasoSiguiente());
-  wrapper.appendChild(btnContinuar);
-
-  if (estado.idiomas.length === 0) {
-    const btnSoloEspanol = crearElemento("button", "btn-opcion-neutro", "Solo hablo español / Omitir");
+  // Botón principal de continuación
+  if (estado.idiomas.length > 0) {
+    const btnContinuar = crearElemento("button", "btn-pill-grande", "Continuar con estos idiomas");
+    btnContinuar.type = "button";
+    btnContinuar.addEventListener("click", () => pasoSiguiente());
+    wrapper.appendChild(btnContinuar);
+  } else {
+    const btnSoloEspanol = crearElemento("button", "btn-pill-grande", "Solo hablo español / Continuar");
+    btnSoloEspanol.type = "button";
     btnSoloEspanol.addEventListener("click", () => {
       estado.idiomas = [];
       pasoSiguiente();
@@ -1203,6 +1633,7 @@ function configurarAccionesFinales(estructuraCV) {
  * - Regresa a la primera pregunta
  */
 export function borrarTodo() {
+  detenerCamaraActiva();
   estado = {
     contacto: {
       nombre: "",
@@ -1210,6 +1641,7 @@ export function borrarTodo() {
       correo: null,
       zona: ""
     },
+    foto: null,
     areas: [],
     areaOtraTexto: null,
     sinExperiencia: false,

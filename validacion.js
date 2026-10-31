@@ -148,7 +148,8 @@ export function validarEstado(entrada) {
       jornada: "completo",
       inmediata: false
     },
-    referencia: null
+    referencia: null,
+    foto: null
   };
 
   const crudo = entrada || {};
@@ -273,10 +274,40 @@ export function validarEstado(entrada) {
     datos.referencia = null;
   }
 
+  // 13. Fotografía opcional (solo se admite dataURL de imagen en memoria)
+  if (typeof crudo.foto === "string" && crudo.foto.startsWith("data:image/")) {
+    datos.foto = crudo.foto;
+  } else {
+    datos.foto = null;
+  }
+
   return {
     valido: errores.length === 0,
     errores,
     datos
   };
+}
+
+/**
+ * Valida un archivo de imagen para fotografía.
+ * Tipos admitidos: JPEG, PNG, WebP.
+ * Tamaño máximo de entrada: 10 MB.
+ * @param {File} archivo
+ * @returns {{ valido: boolean, error: string|null }}
+ */
+export function validarArchivoFoto(archivo) {
+  if (!archivo) {
+    return { valido: false, error: "Seleccione una imagen" };
+  }
+  const tiposValidos = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  const tipo = (archivo.type || "").toLowerCase();
+  if (!tiposValidos.includes(tipo)) {
+    return { valido: false, error: "Formato no compatible. Seleccione una imagen en formato JPG, PNG o WebP." };
+  }
+  const maxBytes = 10 * 1024 * 1024; // 10 MB
+  if (archivo.size > maxBytes) {
+    return { valido: false, error: "La foto supera los 10 MB. Elija una imagen más liviana." };
+  }
+  return { valido: true, error: null };
 }
 

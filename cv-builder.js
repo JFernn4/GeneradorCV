@@ -201,6 +201,13 @@ export function buildCV(datosEntrada, opciones = {}) {
     contactos
   };
 
+  // Fotografía opcional: solo incluirla en encabezado si existe y es válida.
+  // Si es null o no fue provista, la propiedad 'foto' NO debe existir en el encabezado.
+  const fotoVal = datos.foto || datosEntrada.foto || null;
+  if (fotoVal && typeof fotoVal === "string" && fotoVal.startsWith("data:image/")) {
+    encabezado.foto = fotoVal;
+  }
+
   // 2. Construcción de secciones
   const secciones = [];
 

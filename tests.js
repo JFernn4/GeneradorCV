@@ -5,7 +5,7 @@
  */
 
 import { buildCV, formatearListaY, armarFraseDisponibilidad } from "./cv-builder.js";
-import { validarEstado, normalizarNombre, normalizarTelefono, limpiarTexto } from "./validacion.js";
+import { validarEstado, normalizarNombre, normalizarTelefono, limpiarTexto, validarArchivoFoto } from "./validacion.js";
 import { construirDocumentoPDF, generarNombreArchivoPDF } from "./pdf.js";
 
 let exitosos = 0;
@@ -258,6 +258,66 @@ assert(
   docEjecutivo.internal.getNumberOfPages() === 1,
   "PDF: Plantilla ejecutiva cabe exactamente en 1 página Carta",
   `Páginas: ${docEjecutivo.internal.getNumberOfPages()}`
+);
+
+// ----------------------------------------------------
+// CASO FOTOGRAFÍA OPCIONAL
+// ----------------------------------------------------
+console.log("\n--- Pruebas de fotografía opcional ---");
+
+// 1. Sin foto: cv.encabezado.foto NO DEBE EXISTIR
+const cvSinFoto = buildCV({
+  contacto: { nombre: "Carlos Méndez", telefono: "55551234", zona: "Guatemala" },
+  areas: ["ventas"],
+  foto: null
+});
+assert(
+  !("foto" in cvSinFoto.encabezado),
+  "Foto: Si es null, la propiedad 'foto' NO existe en encabezado",
+  JSON.stringify(cvSinFoto.encabezado)
+);
+
+// 2. Con foto válida (dataURL): cv.encabezado.foto está presente
+const dataUrlEjemplo = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+const cvConFoto = buildCV({
+  contacto: { nombre: "Carlos Méndez", telefono: "55551234", zona: "Guatemala" },
+  areas: ["ventas"],
+  foto: dataUrlEjemplo
+});
+assert(
+  cvConFoto.encabezado.foto === dataUrlEjemplo,
+  "Foto: Si se proporciona dataURL, está presente en encabezado.foto"
+);
+
+// 3. Validación de archivos de foto
+const archInvalidoTipo = { type: "application/pdf", size: 1024 };
+const valInvalida = validarArchivoFoto(archInvalidoTipo);
+assert(
+  valInvalida.valido === false && Boolean(valInvalida.error),
+  "Foto: Rechaza formatos no compatibles (ej. PDF)",
+  valInvalida.error
+);
+
+const archGrande = { type: "image/jpeg", size: 15 * 1024 * 1024 };
+const valGrande = validarArchivoFoto(archGrande);
+assert(
+  valGrande.valido === false && valGrande.error.includes("10 MB"),
+  "Foto: Rechaza imágenes mayores a 10 MB",
+  valGrande.error
+);
+
+const archValido = { type: "image/jpeg", size: 2 * 1024 * 1024 };
+const valOk = validarArchivoFoto(archValido);
+assert(
+  valOk.valido === true && valOk.error === null,
+  "Foto: Acepta imagen JPEG válida menor a 10 MB"
+);
+
+// 4. PDF con foto se genera en 1 página Carta sin errores
+const docConFoto = construirDocumentoPDF(cvConFoto, { plantilla: "clasico" });
+assert(
+  docConFoto.internal.getNumberOfPages() === 1,
+  "Foto: PDF generado con foto cabe en 1 página Carta"
 );
 
 // ----------------------------------------------------

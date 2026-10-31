@@ -94,11 +94,25 @@ function dibujarPlantillaClasico(doc, cv, escala) {
   let y = 20;
 
   // --- Encabezado ---
+  let textoX = margenX;
+
+  // Si incluye fotografía opcional
+  if (cv.encabezado.foto) {
+    try {
+      const anchoFoto = 20 * escala;
+      const altoFoto = 24 * escala;
+      doc.addImage(cv.encabezado.foto, "JPEG", margenX, 13, anchoFoto, altoFoto);
+      textoX = margenX + anchoFoto + (5 * escala);
+    } catch (e) {
+      console.warn("No se pudo añadir foto en PDF clásico:", e);
+    }
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22 * escala);
   doc.setTextColor(20, 20, 20);
   const nombreTexto = (cv.encabezado.nombre || "CURRÍCULUM VITAE").toUpperCase();
-  doc.text(nombreTexto, margenX, y);
+  doc.text(nombreTexto, textoX, y);
 
   // Contactos a la derecha o debajo según espacio
   doc.setFont("helvetica", "normal");
@@ -108,10 +122,10 @@ function dibujarPlantillaClasico(doc, cv, escala) {
   const contactos = cv.encabezado.contactos || [];
   const lineaContacto = contactos.join("   •   ");
   y += 7 * escala;
-  doc.text(lineaContacto, margenX, y);
+  doc.text(lineaContacto, textoX, y);
 
   // Línea divisoria
-  y += 5 * escala;
+  y = Math.max(y + (5 * escala), cv.encabezado.foto ? 13 + (24 * escala) + 3 : y + (5 * escala));
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.4);
   doc.line(margenX, y, margenX + anchoUtil, y);
@@ -225,6 +239,19 @@ function dibujarPlantillaLateral(doc, cv, escala) {
   let ySidebar = 22;
   const margenSideX = 10;
   const anchoUtilSide = anchoSidebar - (margenSideX * 2);
+
+  // Si incluye fotografía opcional en el sidebar
+  if (cv.encabezado.foto) {
+    try {
+      const anchoFotoSide = 32 * escala;
+      const altoFotoSide = 38 * escala;
+      const xFotoSide = (anchoSidebar - anchoFotoSide) / 2;
+      doc.addImage(cv.encabezado.foto, "JPEG", xFotoSide, 14, anchoFotoSide, altoFotoSide);
+      ySidebar = 14 + altoFotoSide + (6 * escala);
+    } catch (e) {
+      console.warn("No se pudo añadir foto en PDF lateral:", e);
+    }
+  }
 
   // Contacto en Sidebar
   doc.setFont("helvetica", "bold");
@@ -350,11 +377,24 @@ function dibujarPlantillaEjecutivo(doc, cv, escala) {
   doc.setFillColor(14, 42, 71); // #0e2a47
   doc.rect(0, 0, 215.9, altoBanner, "F");
 
+  let xNombreBanner = 16;
+  if (cv.encabezado.foto) {
+    try {
+      const anchoFotoB = 18 * escala;
+      const altoFotoB = 22 * escala;
+      const yFotoB = (altoBanner - altoFotoB) / 2;
+      doc.addImage(cv.encabezado.foto, "JPEG", 16, yFotoB, anchoFotoB, altoFotoB);
+      xNombreBanner = 16 + anchoFotoB + (5 * escala);
+    } catch (e) {
+      console.warn("No se pudo añadir foto en PDF ejecutivo:", e);
+    }
+  }
+
   // Nombre blanco en banner
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20 * escala);
   doc.setTextColor(255, 255, 255);
-  doc.text((cv.encabezado.nombre || "CURRÍCULUM VITAE").toUpperCase(), 16, 20 * escala);
+  doc.text((cv.encabezado.nombre || "CURRÍCULUM VITAE").toUpperCase(), xNombreBanner, 20 * escala);
 
   // Contactos a la derecha del banner en blanco
   doc.setFont("helvetica", "normal");
