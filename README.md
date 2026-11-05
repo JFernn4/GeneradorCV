@@ -4,7 +4,7 @@ Generador de currículums 100% en el navegador y sin backend, diseñado para per
 
 ---
 
-## 🎯 Arquitectura y Módulos
+## Arquitectura y Módulos
 
 El proyecto está construido en **JavaScript puro (ES Modules)** y HTML/CSS, sin frameworks ni dependencias de servidor.
 
@@ -25,7 +25,7 @@ GeneradorCV/
 
 ---
 
-## 🛡️ Privacidad Estricta
+## Privacidad
 
 1. **Cero red con datos personales**: Ningún dato sale del dispositivo del usuario. No hay analítica, telemetría ni llamadas API externas.
 2. **Sin persistencia en disco**: Prohibido el uso de `localStorage`, `sessionStorage`, `cookies` e `IndexedDB`. Todo el estado reside exclusivamente en la memoria RAM del navegador. Si la página se recarga o se cierra, los datos desaparecen por completo.
@@ -35,7 +35,7 @@ GeneradorCV/
 
 ---
 
-## 📚 Cómo agregar áreas al catálogo (`catalogo.js`)
+## Cómo agregar áreas al catálogo (`catalogo.js`)
 
 `catalogo.js` es un módulo puramente de datos. Para añadir una nueva área ocupacional, basta con agregar una nueva clave dentro del objeto `CATALOGO_AREAS`:
 
@@ -48,7 +48,7 @@ export const CATALOGO_AREAS = {
     id: "seguridad",
     etiqueta: "Seguridad y Vigilancia",
     nombreMinuscula: "seguridad privada",
-    icono: "🛡️",
+    icono: "",
     puestos: [
       "Agente de seguridad",
       "Vigilancia nocturna",
@@ -75,7 +75,7 @@ export const CATALOGO_AREAS = {
 
 ---
 
-## 🔌 Cómo conectar una nueva capa de presentación a `buildCV`
+## Cómo conectar una nueva capa de presentación a `buildCV`
 
 La función `buildCV(datos, { densidad: "normal" | "compacta" })` es una **función pura**: misma entrada siempre genera la misma salida estructurada. No produce HTML ni estilos.
 
@@ -160,7 +160,7 @@ function miRenderPersonalizado(cv, contenedorDOM) {
 
 ---
 
-## 🧪 Ejecutar pruebas
+## Ejecutar pruebas
 
 El proyecto incluye 19 casos de prueba automatizados que validan:
 - Caso 1: Con experiencia previa (normalización de nombre, teléfono y cálculo de perfil con cotas inferiores).
